@@ -1,6 +1,6 @@
 # Student Study Planner & Grade Dashboard
 
-Version 1 is a simple browser-based planner for managing courses and assignments. It is built with plain HTML, CSS, and vanilla JavaScript, with no server or database required.
+Version 2.0 is a browser-based planner for managing courses, assignments, priorities, statuses, and grades. It is built with plain HTML, CSS, and vanilla JavaScript, with no server, database, framework, or external library required.
 
 ## Features
 
@@ -14,6 +14,12 @@ Version 1 is a simple browser-based planner for managing courses and assignments
 - Validate required course and assignment fields.
 - Save courses and assignments in browser `localStorage`.
 - Responsive layout for desktop and smaller screens.
+- Optional grades from 0 to 100, with blank grades shown as `Not Graded`.
+- Average grade calculated using graded assignments only.
+- Dashboard cards for total, completed, remaining, overdue, and average grade.
+- Overdue highlighting for unfinished assignments with past due dates.
+- Filters for course, priority, and status.
+- Version 1 data remains compatible; assignments without a grade are treated as ungraded.
 
 ## Files
 
@@ -41,6 +47,35 @@ The app stores data locally in the current browser using `localStorage`:
 
 Data remains available after refreshing or closing the browser, as long as the browser's site data is not cleared. Data is stored only on the device and browser where it was entered.
 
-## Version 1 Scope
+## Dashboard Calculations
 
-Version 1 intentionally does not include grade calculations, averages, statistics, charts, search, advanced filters, notifications, dark mode, or a calendar view. These can be considered for a future version.
+- **Total Assignments** counts every saved assignment.
+- **Completed Assignments** counts assignments with the `Completed` status.
+- **Remaining Assignments** equals total assignments minus completed assignments.
+- **Overdue Assignments** counts assignments whose due date is before today and whose status is not `Completed`.
+- **Average Grade** includes only assignments with a grade. It displays `N/A` when no assignments have grades.
+
+Changing an assignment's status, due date, or grade updates the dashboard automatically.
+
+## Testing Version 2.0
+
+To test the required dashboard scenario:
+
+1. Create one course and five assignments.
+2. Mark exactly two assignments as `Completed`.
+3. Give one unfinished assignment a due date before today.
+4. Give grades to only three assignments, such as `90`, `80`, and `100`.
+5. Leave the other two grades blank.
+6. Confirm the dashboard shows `5` total, `2` completed, `3` remaining, `1` overdue, and an average grade of `90`.
+7. Test each assignment filter and refresh the page to confirm data remains.
+
+## Git History
+
+The Version 1 history is preserved. The release tags are:
+
+- `v1.0` - Version 1 release.
+- `v2.0` - Version 2.0 release.
+
+## Version 2 Scope
+
+Version 2.0 includes the grade dashboard and basic assignment filters. It intentionally does not include charts, notifications, dark mode, or a calendar view.
