@@ -5,6 +5,7 @@ let courses = [];
 let assignments = [];
 let editingCourseId = null;
 let editingAssignmentId = null;
+const activeFilters = { course: 'all', priority: 'all', status: 'all' };
 
 const courseForm = document.querySelector('#course-form');
 const assignmentForm = document.querySelector('#assignment-form');
@@ -20,10 +21,13 @@ function initializeApp() {
   renderAssignments();
 }
 
-// localStorage keeps the planner available after a refresh or browser restart.
+// Older Version 1 assignments may not have a grade property. They remain ungraded.
 function loadData() {
   courses = readStoredArray(COURSES_KEY);
-  assignments = readStoredArray(ASSIGNMENTS_KEY);
+  assignments = readStoredArray(ASSIGNMENTS_KEY).map(assignment => ({
+    ...assignment,
+    grade: assignment.grade === undefined || assignment.grade === null ? '' : assignment.grade
+  }));
 }
 
 function readStoredArray(key) {
@@ -52,6 +56,9 @@ function bindEvents() {
   courseList.addEventListener('click', handleCourseActions);
   assignmentList.addEventListener('click', handleAssignmentActions);
   assignmentList.addEventListener('change', handleAssignmentChange);
+  document.querySelector('#filter-course').addEventListener('change', handleFilterChange);
+  document.querySelector('#filter-priority').addEventListener('change', handleFilterChange);
+  document.querySelector('#filter-status').addEventListener('change', handleFilterChange);
 }
 
 function openCourseForm(course = null) {
@@ -65,30 +72,44 @@ function openCourseForm(course = null) {
   document.querySelector('#course-name').focus();
 }
 
-function closeCourseForm() { courseForm.classList.add('hidden'); editingCourseId = null; }
+function closeCourseForm() {
+  courseForm.classList.add('hidden');
+  editingCourseId = null;
+}
 
 function handleCourseSubmit(event) {
   event.preventDefault();
   const name = document.querySelector('#course-name').value.trim();
   const code = document.querySelector('#course-code').value.trim();
   const instructor = document.querySelector('#instructor-name').value.trim();
-  if (!name || !code || !instructor) { document.querySelector('#course-message').textContent = 'Please complete the course name, code, and instructor fields.'; return; }
+  if (!name || !code || !instructor) {
+    document.querySelector('#course-message').textContent = 'Please complete the course name, code, and instructor fields.';
+    return;
+  }
   if (editingCourseId) {
     const course = courses.find(item => item.id === editingCourseId);
     Object.assign(course, { name, code, instructor });
-  } else { courses.push({ id: createId(), name, code, instructor }); }
-  saveData(); renderCourses(); renderAssignments(); closeCourseForm();
+  } else {
+    courses.push({ id: createId(), name, code, instructor });
+  }
+  saveData();
+  renderCourses();
+  renderAssignments();
+  closeCourseForm();
 }
 
 function renderCourses() {
   courseList.innerHTML = courses.map(course => `<article class="course-card"><span class="course-code">${escapeHtml(course.code)}</span><h3>${escapeHtml(course.name)}</h3><p class="course-instructor">${escapeHtml(course.instructor)}</p><div class="card-actions"><button class="button button-quiet button-small" data-action="edit" data-id="${course.id}" type="button">Edit</button><button class="button button-danger button-small" data-action="delete" data-id="${course.id}" type="button">Delete</button></div></article>`).join('');
   document.querySelector('#course-empty').classList.toggle('hidden', courses.length > 0);
   updateCourseOptions();
+  updateFilterOptions();
 }
 
 function handleCourseActions(event) {
-  const button = event.target.closest('button'); if (!button) return;
-  const course = courses.find(item => item.id === button.dataset.id); if (!course) return;
+  const button = event.target.closest('button');
+  if (!button) return;
+  const course = courses.find(item => item.id === button.dataset.id);
+  if (!course) return;
   if (button.dataset.action === 'edit') openCourseForm(course);
   if (button.dataset.action === 'delete') deleteCourse(course);
 }
@@ -97,11 +118,17 @@ function deleteCourse(course) {
   if (!confirm(`Delete ${course.name}? Its assignments will also be removed.`)) return;
   courses = courses.filter(item => item.id !== course.id);
   assignments = assignments.filter(item => item.courseId !== course.id);
-  saveData(); renderCourses(); renderAssignments();
+  if (activeFilters.course === course.id) activeFilters.course = 'all';
+  saveData();
+  renderCourses();
+  renderAssignments();
 }
 
 function openAssignmentForm(assignment = null) {
-  if (!assignment && courses.length === 0) { alert('Please create a course before adding an assignment.'); return; }
+  if (!assignment && courses.length === 0) {
+    alert('Please create a course before adding an assignment.');
+    return;
+  }
   editingAssignmentId = assignment ? assignment.id : null;
   document.querySelector('#assignment-form-title').textContent = assignment ? 'Edit assignment' : 'Add an assignment';
   updateCourseOptions(assignment ? assignment.courseId : '');
@@ -110,16 +137,28 @@ function openAssignmentForm(assignment = null) {
   document.querySelector('#due-date').value = assignment ? assignment.dueDate : '';
   document.querySelector('#priority').value = assignment ? assignment.priority : 'Medium';
   document.querySelector('#status').value = assignment ? assignment.status : 'Not Started';
+  document.querySelector('#grade').value = assignment && assignment.grade !== '' ? assignment.grade : '';
   document.querySelector('#assignment-message').textContent = '';
-  assignmentForm.classList.remove('hidden'); document.querySelector('#assignment-name').focus();
+  assignmentForm.classList.remove('hidden');
+  document.querySelector('#assignment-name').focus();
 }
 
-function closeAssignmentForm() { assignmentForm.classList.add('hidden'); editingAssignmentId = null; }
+function closeAssignmentForm() {
+  assignmentForm.classList.add('hidden');
+  editingAssignmentId = null;
+}
 
 function updateCourseOptions(selectedId = '') {
   const courseSelect = document.querySelector('#assignment-course');
   courseSelect.innerHTML = '<option value="">Select a course</option>' + courses.map(course => `<option value="${course.id}">${escapeHtml(course.code)} - ${escapeHtml(course.name)}</option>`).join('');
   if (selectedId) courseSelect.value = selectedId;
+}
+
+function updateFilterOptions() {
+  const filterSelect = document.querySelector('#filter-course');
+  filterSelect.innerHTML = '<option value="all">All Courses</option>' + courses.map(course => `<option value="${course.id}">${escapeHtml(course.code)} - ${escapeHtml(course.name)}</option>`).join('');
+  filterSelect.value = courses.some(course => course.id === activeFilters.course) ? activeFilters.course : 'all';
+  activeFilters.course = filterSelect.value;
 }
 
 function handleAssignmentSubmit(event) {
@@ -129,38 +168,115 @@ function handleAssignmentSubmit(event) {
   const dueDate = document.querySelector('#due-date').value;
   const priority = document.querySelector('#priority').value;
   const status = document.querySelector('#status').value;
-  if (!name || !courseId || !dueDate) { document.querySelector('#assignment-message').textContent = 'Please complete the assignment name, course, and due date fields.'; return; }
-  const assignmentData = { name, courseId, dueDate, priority, status };
-  if (editingAssignmentId) Object.assign(assignments.find(item => item.id === editingAssignmentId), assignmentData);
-  else assignments.push({ id: createId(), ...assignmentData });
-  saveData(); renderAssignments(); closeAssignmentForm();
+  const gradeValue = document.querySelector('#grade').value.trim();
+  const grade = gradeValue === '' ? '' : Number(gradeValue);
+  if (!name || !courseId || !dueDate) {
+    document.querySelector('#assignment-message').textContent = 'Please complete the assignment name, course, and due date fields.';
+    return;
+  }
+  if (gradeValue !== '' && (!Number.isFinite(grade) || grade < 0 || grade > 100)) {
+    document.querySelector('#assignment-message').textContent = 'Grade must be a number from 0 to 100, or left blank.';
+    return;
+  }
+  const assignmentData = { name, courseId, dueDate, priority, status, grade };
+  if (editingAssignmentId) {
+    Object.assign(assignments.find(item => item.id === editingAssignmentId), assignmentData);
+  } else {
+    assignments.push({ id: createId(), ...assignmentData });
+  }
+  saveData();
+  renderAssignments();
+  closeAssignmentForm();
 }
 
 function renderAssignments() {
-  assignmentList.innerHTML = assignments.map(assignment => {
+  const visibleAssignments = filterAssignments();
+  assignmentList.innerHTML = visibleAssignments.map(assignment => {
     const course = courses.find(item => item.id === assignment.courseId);
-    const priorityClass = `priority-${assignment.priority.toLowerCase()}`;
-    const statusOptions = ['Not Started', 'In Progress', 'Completed'].map(status => `<option ${status === assignment.status ? 'selected' : ''}>${status}</option>`).join('');
-    return `<tr class="${assignment.status === 'Completed' ? 'assignment-completed' : ''}"><td>${escapeHtml(assignment.name)}</td><td>${course ? escapeHtml(course.code) : 'Course removed'}</td><td>${formatDate(assignment.dueDate)}</td><td><select class="priority-badge ${priorityClass}" data-field="priority" data-id="${assignment.id}" aria-label="Change priority for ${escapeHtml(assignment.name)}"><option>Low</option><option>Medium</option><option>High</option></select></td><td><select class="status-select" data-field="status" data-id="${assignment.id}" aria-label="Change status for ${escapeHtml(assignment.name)}">${statusOptions}</select></td><td><div class="action-group"><button class="button button-quiet button-small" data-action="edit" data-id="${assignment.id}" type="button">Edit</button><button class="button button-danger button-small" data-action="delete" data-id="${assignment.id}" type="button">Delete</button></div></td></tr>`;
+    const priority = ['Low', 'Medium', 'High'].includes(assignment.priority) ? assignment.priority : 'Medium';
+    const status = ['Not Started', 'In Progress', 'Completed'].includes(assignment.status) ? assignment.status : 'Not Started';
+    const priorityClass = `priority-${priority.toLowerCase()}`;
+    const statusOptions = ['Not Started', 'In Progress', 'Completed'].map(option => `<option ${option === status ? 'selected' : ''}>${option}</option>`).join('');
+    const gradeDisplay = assignment.grade === '' || assignment.grade === undefined || assignment.grade === null ? '<span class="not-graded">Not Graded</span>' : `<span class="grade-value">${formatGrade(assignment.grade)}%</span>`;
+    const overdue = calculateOverdueAssignments().some(item => item.id === assignment.id);
+    const dueDateDisplay = `${formatDate(assignment.dueDate)}${overdue ? '<span class="overdue-label">Overdue</span>' : ''}`;
+    return `<tr class="${status === 'Completed' ? 'assignment-completed' : ''} ${overdue ? 'assignment-overdue' : ''}"><td>${escapeHtml(assignment.name)}</td><td>${course ? escapeHtml(course.code) : 'Course removed'}</td><td>${dueDateDisplay}</td><td><select class="priority-badge ${priorityClass}" data-field="priority" data-id="${assignment.id}" aria-label="Change priority for ${escapeHtml(assignment.name)}"><option>Low</option><option>Medium</option><option>High</option></select></td><td><select class="status-select" data-field="status" data-id="${assignment.id}" aria-label="Change status for ${escapeHtml(assignment.name)}">${statusOptions}</select></td><td>${gradeDisplay}</td><td><div class="action-group"><button class="button button-quiet button-small" data-action="edit" data-id="${assignment.id}" type="button">Edit</button><button class="button button-danger button-small" data-action="delete" data-id="${assignment.id}" type="button">Delete</button></div></td></tr>`;
   }).join('');
-  assignments.forEach(assignment => { const select = assignmentList.querySelector(`[data-field="priority"][data-id="${assignment.id}"]`); if (select) select.value = assignment.priority; });
-  document.querySelector('#assignment-empty').classList.toggle('hidden', assignments.length > 0);
+  visibleAssignments.forEach(assignment => {
+    const select = assignmentList.querySelector(`[data-field="priority"][data-id="${assignment.id}"]`);
+    if (select) select.value = assignment.priority;
+  });
+  const emptyState = document.querySelector('#assignment-empty');
+  emptyState.querySelector('h3').textContent = assignments.length > 0 ? 'No matching assignments' : 'No assignments yet';
+  emptyState.querySelector('p').textContent = assignments.length > 0 ? 'Try changing the filters to see more assignments.' : 'Your assignments will appear here once you add them.';
+  emptyState.classList.toggle('hidden', visibleAssignments.length > 0);
+  updateDashboard();
+}
+
+function filterAssignments() {
+  return assignments.filter(assignment => {
+    const matchesCourse = activeFilters.course === 'all' || assignment.courseId === activeFilters.course;
+    const matchesPriority = activeFilters.priority === 'all' || assignment.priority === activeFilters.priority;
+    const matchesStatus = activeFilters.status === 'all' || assignment.status === activeFilters.status;
+    return matchesCourse && matchesPriority && matchesStatus;
+  });
+}
+
+function handleFilterChange(event) {
+  const filterName = event.target.id.replace('filter-', '');
+  activeFilters[filterName] = event.target.value;
+  renderAssignments();
 }
 
 function handleAssignmentActions(event) {
-  const button = event.target.closest('button'); if (!button) return;
-  const assignment = assignments.find(item => item.id === button.dataset.id); if (!assignment) return;
+  const button = event.target.closest('button');
+  if (!button) return;
+  const assignment = assignments.find(item => item.id === button.dataset.id);
+  if (!assignment) return;
   if (button.dataset.action === 'edit') openAssignmentForm(assignment);
   if (button.dataset.action === 'delete') deleteAssignment(assignment);
 }
 
 function handleAssignmentChange(event) {
-  const select = event.target.closest('select'); if (!select) return;
-  const assignment = assignments.find(item => item.id === select.dataset.id); if (!assignment) return;
-  assignment[select.dataset.field] = select.value; saveData(); renderAssignments();
+  const select = event.target.closest('select');
+  if (!select) return;
+  const assignment = assignments.find(item => item.id === select.dataset.id);
+  if (!assignment) return;
+  assignment[select.dataset.field] = select.value;
+  saveData();
+  renderAssignments();
 }
 
-function deleteAssignment(assignment) { if (!confirm(`Delete ${assignment.name}?`)) return; assignments = assignments.filter(item => item.id !== assignment.id); saveData(); renderAssignments(); }
+function deleteAssignment(assignment) {
+  if (!confirm(`Delete ${assignment.name}?`)) return;
+  assignments = assignments.filter(item => item.id !== assignment.id);
+  saveData();
+  renderAssignments();
+}
+
+function updateDashboard() {
+  const completedCount = assignments.filter(assignment => assignment.status === 'Completed').length;
+  document.querySelector('#total-assignments').textContent = assignments.length;
+  document.querySelector('#completed-assignments').textContent = completedCount;
+  document.querySelector('#remaining-assignments').textContent = assignments.length - completedCount;
+  document.querySelector('#overdue-assignments').textContent = calculateOverdueAssignments().length;
+  document.querySelector('#average-grade').textContent = calculateAverageGrade();
+}
+
+function calculateAverageGrade() {
+  const gradedAssignments = assignments.filter(assignment => assignment.grade !== '' && assignment.grade !== undefined && assignment.grade !== null && Number.isFinite(Number(assignment.grade)));
+  if (gradedAssignments.length === 0) return 'N/A';
+  const totalGrade = gradedAssignments.reduce((sum, assignment) => sum + Number(assignment.grade), 0);
+  const average = totalGrade / gradedAssignments.length;
+  return Number.isInteger(average) ? average : average.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function calculateOverdueAssignments() {
+  const today = new Date().toISOString().slice(0, 10);
+  return assignments.filter(assignment => assignment.dueDate < today && assignment.status !== 'Completed');
+}
+
 function createId() { return `${Date.now()}-${Math.random().toString(16).slice(2)}`; }
 function formatDate(date) { return new Date(`${date}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); }
+function formatGrade(grade) { return Number.isInteger(Number(grade)) ? Number(grade) : Number(grade).toFixed(2).replace(/0+$/, '').replace(/\.$/, ''); }
 function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character])); }

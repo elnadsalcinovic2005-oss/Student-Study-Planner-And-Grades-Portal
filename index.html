@@ -19,6 +19,14 @@
   </header>
 
   <main class="container dashboard">
+    <section class="summary-grid" aria-label="Assignment summary">
+      <article class="summary-card summary-total"><span class="summary-label">Total assignments</span><strong id="total-assignments">0</strong><span class="summary-note">All current work</span></article>
+      <article class="summary-card summary-completed"><span class="summary-label">Completed</span><strong id="completed-assignments">0</strong><span class="summary-note">Finished assignments</span></article>
+      <article class="summary-card summary-remaining"><span class="summary-label">Remaining</span><strong id="remaining-assignments">0</strong><span class="summary-note">Still on your list</span></article>
+      <article class="summary-card summary-overdue"><span class="summary-label">Overdue</span><strong id="overdue-assignments">0</strong><span class="summary-note">Unfinished and past due</span></article>
+      <article class="summary-card summary-grade"><span class="summary-label">Average grade</span><strong id="average-grade">N/A</strong><span class="summary-note">Graded work only</span></article>
+    </section>
+
     <section class="section-panel" aria-labelledby="courses-heading">
       <div class="section-heading">
         <div>
@@ -79,6 +87,7 @@
           <label>Due date<input id="due-date" name="dueDate" type="date" required></label>
           <label>Priority<select id="priority" name="priority"><option value="Low">Low</option><option value="Medium" selected>Medium</option><option value="High">High</option></select></label>
           <label>Status<select id="status" name="status"><option value="Not Started" selected>Not Started</option><option value="In Progress">In Progress</option><option value="Completed">Completed</option></select></label>
+          <label>Grade <span class="optional-label">(optional)</span><input id="grade" name="grade" type="number" min="0" max="100" step="0.01" placeholder="e.g. 92"></label>
         </div>
         <p class="form-message" id="assignment-message" role="alert"></p>
         <div class="form-actions">
@@ -87,10 +96,19 @@
         </div>
       </form>
 
+      <div class="filter-bar" aria-label="Filter assignments">
+        <div><p class="section-kicker">View options</p><h3>Filter assignments</h3></div>
+        <div class="filter-controls">
+          <label>Course<select id="filter-course"><option value="all">All Courses</option></select></label>
+          <label>Priority<select id="filter-priority"><option value="all">All Priorities</option><option value="Low">Low</option><option value="Medium">Medium</option><option value="High">High</option></select></label>
+          <label>Status<select id="filter-status"><option value="all">All Statuses</option><option value="Not Started">Not Started</option><option value="In Progress">In Progress</option><option value="Completed">Completed</option></select></label>
+        </div>
+      </div>
+
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th scope="col">Assignment</th><th scope="col">Course</th><th scope="col">Due date</th><th scope="col">Priority</th><th scope="col">Status</th><th scope="col">Actions</th></tr>
+            <tr><th scope="col">Assignment</th><th scope="col">Course</th><th scope="col">Due date</th><th scope="col">Priority</th><th scope="col">Status</th><th scope="col">Grade</th><th scope="col">Actions</th></tr>
           </thead>
           <tbody id="assignment-list"></tbody>
         </table>
